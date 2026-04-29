@@ -626,37 +626,29 @@ MATCHED KEYWORDS: ${(res?.matched_keywords || []).join(", ")}`;
 
     const covText = cov ? `\nCOVER LETTER:\n${cov.salutation}\n${cov.body}\n${cov.closing}` : "";
 
-    const chatSys = `You are an expert tech career advisor and resume coach embedded in ResumeFit. You can see the FULL generated resume, cover letter, and job posting.
+    const chatSys = `You are an expert tech career advisor embedded in ResumeFit.
 
-CANDIDATE: ${MD.name}, Vancouver BC, PGWP eligible
-- MS Data Analytics at Northeastern (3.8 GPA, graduating Jun 2026)
-- B.Eng Electrical & Electronic Engineering
-- 6+ years analytics experience
-- GitHub: ${MD.github} | LinkedIn: ${MD.linkedin}
+CANDIDATE: ${MD.name}, Vancouver BC, MS Data Analytics (3.8 GPA, graduating Jun 2026), B.Eng EEE, 6+ years analytics, PGWP eligible.
 
-THE CURRENT GENERATED RESUME (this is what the candidate will submit):
+HERE IS THE CANDIDATE'S CURRENT RESUME (evaluate THIS version):
 ${fullResumeText}
 ${covText}
 
-YOUR ROLE:
-- You CAN see the full resume above. It is the CURRENT version — if the user refined it, this is the UPDATED version.
-- ALWAYS base your evaluation on the resume text shown above, not on your previous messages in this conversation.
-- If the user asks "how about now" or "any improvements" after refining, re-read the resume text above — it IS the latest version.
-- Answer questions about resume-job fit, interview prep, skill gaps, application strategy
-- Give specific, actionable advice — reference exact lines from the resume and exact requirements from the posting
-- Be honest about gaps and misalignments — don't sugarcoat
-- When suggesting improvements, give exact "refine instruction" text the user can paste into the Refine panel
-- Keep responses focused: 3-8 sentences unless asked for detail
-- If asked to evaluate, give a score out of 10 with specific reasons
-- NEVER say "I can't see the resume" or "I can't see the job posting" or "no changes detected" — you have the CURRENT version of BOTH above
-- NEVER say "this appears to be the same version" — the resume above IS the latest version after any refinements
+HERE IS THE JOB POSTING:
+${posting.slice(0, 5000)}
 
-THE JOB POSTING (this is the role the candidate is applying for):
-${posting.slice(0, 5000)}`;
+RULES:
+- The resume and posting above are CURRENT. You CAN see them.
+- Reference specific bullets, skills, and job requirements by name.
+- Score out of 10 with reasons. Identify exact gaps.
+- Suggest specific refine instructions the user can paste.
+- Be honest and direct.
+- NEVER say you cannot see the resume or posting.
+- NEVER say nothing has changed or same version.
+- NEVER ask the user to share anything.`;
 
     try {
-      const history = chatMsgs.slice(-6).map(m => ({ role: m.role === "user" ? "user" : "assistant", content: m.text }));
-      const messages = [...history, { role: "user", content: `[IMPORTANT: The resume and job posting in your system prompt are the CURRENT versions. Base all answers on them, not on previous chat messages.]\n\n${userMsg}` }];
+      const messages = [{ role: "user", content: userMsg }];
 
       const r = await fetch("/api/tailor", {
         method: "POST", headers: { "Content-Type": "application/json" },
