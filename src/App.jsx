@@ -808,15 +808,15 @@ IMPORTANT: The resume text above is my CURRENT version. If I ask "how is it now"
             </div>
           </div>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            {["dashboard", "builder"].map(v => (
+            {[["dashboard", "Dashboard"], ["builder", "Builder"]].map(([v, label]) => (
               <button key={v} onClick={v === "dashboard" ? goToDashboard : startNewResume}
                 style={{
                   padding: "7px 16px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 500,
                   cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s",
-                  background: view === v ? "rgba(79,142,247,0.12)" : "transparent",
-                  color: view === v ? C.accent : C.textD
+                  background: (view === v || (v === "builder" && view === "results")) ? "rgba(79,142,247,0.12)" : "transparent",
+                  color: (view === v || (v === "builder" && view === "results")) ? C.accent : C.textD
                 }}>
-                {v === "dashboard" ? "Dashboard" : "Builder"}
+                {label}
               </button>
             ))}
             <div style={{ width: 1, height: 20, background: C.border, margin: "0 4px" }}/>
@@ -854,7 +854,7 @@ IMPORTANT: The resume text above is my CURRENT version. If I ask "how is it now"
                 { label: "Avg match", value: resumeVersions.length ? Math.round(resumeVersions.reduce((s, v) => s + (v.score || 0), 0) / resumeVersions.length) + "%" : "—", sub: "score", color: C.purple, glow: "rgba(167,139,250,0.08)" }
               ].map((s, i) => (
                 <div key={i} style={{ background: s.glow, border: `1px solid ${C.border}`, borderRadius: 14, padding: "18px 20px", position: "relative", overflow: "hidden" }}>
-                  <div style={{ position: "absolute", top: -20, right: -20, width: 80, height: 80, borderRadius: "50%", background: s.glow, filter: "blur(20px)" }}/>
+                  <div style={{ position: "absolute", top: -20, right: -20, width: 80, height: 80, borderRadius: "50%", background: s.glow, opacity: 0.5 }}/>
                   <div style={{ fontSize: 11, color: C.textD, marginBottom: 6, letterSpacing: "0.04em" }}>{s.label}</div>
                   <div style={{ fontSize: 32, fontWeight: 700, color: s.color, letterSpacing: "-0.02em", lineHeight: 1 }}>{s.value}</div>
                   <div style={{ fontSize: 10, color: C.textD, marginTop: 4 }}>{s.sub}</div>
@@ -930,7 +930,7 @@ IMPORTANT: The resume text above is my CURRENT version. If I ask "how is it now"
               <div style={{ marginBottom: 28 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                   <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.02em" }}>Resume versions</div>
-                  <button onClick={() => { if (confirm("Clear all resume versions?")) setResumeVersions([]); }} style={{ fontSize: 11, background: "none", border: "none", color: C.textD, cursor: "pointer", fontFamily: "inherit" }}>Clear all</button>
+                  <button onClick={() => { if (window.confirm("Clear all resume versions?")) setResumeVersions([]); }} style={{ fontSize: 11, background: "none", border: "none", color: C.textD, cursor: "pointer", fontFamily: "inherit" }}>Clear all</button>
                 </div>
                 <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
                   {resumeVersions.slice(0, 10).map((ver, i) => (
