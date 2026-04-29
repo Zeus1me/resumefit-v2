@@ -639,44 +639,25 @@ MATCHED KEYWORDS: ${(currentRes?.matched_keywords || []).join(", ")}`;
 
     const covText = currentCov ? `\nCOVER LETTER:\n${currentCov.salutation}\n${currentCov.body}\n${currentCov.closing}` : "";
 
-    const chatSys = `You are an expert tech career advisor embedded in ResumeFit.
+    const chatSys = `You are an expert tech career advisor. You will receive the candidate's resume and job posting in the conversation. Evaluate them honestly. Score out of 10. Quote specific lines. Suggest refine instructions. NEVER say you can't see the resume — it's in the first message.`;
 
-CANDIDATE: ${MD.name}, Vancouver BC, MS Data Analytics (3.8 GPA, graduating Jun 2026), B.Eng EEE, 6+ years analytics, PGWP eligible.
+    try {
+      const contextMsg = `Here is my CURRENT resume and the job posting. Evaluate based on THIS text:
 
-HERE IS THE CANDIDATE'S CURRENT RESUME — THIS IS THE VERSION THEY WILL SUBMIT:
+=== MY RESUME ===
 ${fullResumeText}
 ${covText}
 
-HERE IS THE JOB POSTING THEY ARE APPLYING TO:
-${currentPosting.slice(0, 5000)}
+=== JOB POSTING ===
+${currentPosting.slice(0, 4000)}
 
-INSTRUCTIONS:
-You are looking at the CURRENT, LIVE version of the resume. This is what appears on the candidate's screen right now.
+=== END ===`;
 
-When the user asks you to evaluate, critique, or improve the resume:
-1. Read the PROFESSIONAL SUMMARY above and quote specific phrases from it
-2. Read the TECHNICAL SKILLS above and note what's included vs missing from the posting
-3. Read each EXPERIENCE bullet above and assess relevance to the posting
-4. Read each PROJECT above and assess relevance
-5. Compare the MATCHED KEYWORDS and MATCH SCORE to the posting requirements
-6. Give a score out of 10 with specific, referenced reasons
-7. Suggest exact text for the Refine panel to improve specific sections
-
-When the user says "how about now" or "is it better" or "check again":
-- This means they have REFINED the resume. The text above IS the new version.
-- Re-evaluate by reading the summary, skills, bullets, and projects ABOVE.
-- Comment on what specifically changed and whether it improved the fit.
-- Give a NEW score.
-
-CRITICAL RULES:
-- You ALWAYS have the resume and posting. They are printed above.
-- NEVER say "I don't see changes" or "same version" or "nothing has changed."
-- NEVER say "I can't see the resume" or "paste the updated version."
-- NEVER ask the user to share anything — everything is above.
-- Start every evaluation by quoting the first sentence of the Professional Summary to prove you're reading it.`;
-
-    try {
-      const messages = [{ role: "user", content: userMsg }];
+      const messages = [
+        { role: "user", content: contextMsg },
+        { role: "assistant", content: "I can see your full resume and the job posting. What would you like me to evaluate or improve?" },
+        { role: "user", content: userMsg }
+      ];
 
       const r = await fetch("/api/tailor", {
         method: "POST", headers: { "Content-Type": "application/json" },
