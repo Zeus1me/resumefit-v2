@@ -402,14 +402,14 @@ export default function App() {
 
   // Dashboard data (persisted in localStorage)
   const [apps, setApps] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("rf_apps") || "[]"); } catch { return []; }
+    try { const d = localStorage.getItem("rf_apps"); return d ? JSON.parse(d) : []; } catch(e) { console.error("apps parse error", e); return []; }
   });
   const [resumeVersions, setResumeVersions] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("rf_versions") || "[]"); } catch { return []; }
+    try { const d = localStorage.getItem("rf_versions"); return d ? JSON.parse(d) : []; } catch(e) { console.error("versions parse error", e); return []; }
   });
 
-  useEffect(() => { try { localStorage.setItem("rf_apps", JSON.stringify(apps)); } catch {} }, [apps]);
-  useEffect(() => { try { localStorage.setItem("rf_versions", JSON.stringify(resumeVersions)); } catch {} }, [resumeVersions]);
+  useEffect(() => { try { localStorage.setItem("rf_apps", JSON.stringify(apps)); } catch(e) {} }, [apps]);
+  useEffect(() => { try { localStorage.setItem("rf_versions", JSON.stringify(resumeVersions)); } catch(e) {} }, [resumeVersions]);
 
   function saveApplication(resData, covData, postText) {
     const app = {
@@ -521,14 +521,14 @@ export default function App() {
       // Resume
       setStatus("analyzing"); setProg("Tailoring resume...");
       const raw = await apiCall(makeResumeSys(pages), `Job posting:\n${txt}${extra}`, pages === 2 ? 2000 : 1500);
-      let p; try { p = JSON.parse(raw); } catch { throw new Error("Resume parse failed. Try again."); }
+      let p; try { p = JSON.parse(raw); } catch(e) { throw new Error("Resume parse failed. Try again."); }
       setRes(p);
 
       // Cover letter (if selected)
       if (genType === "both") {
         setStatus("cover"); setProg("Writing cover letter...");
         const cRaw = await apiCall(COVER_SYS, `Job posting:\n${txt}${extra}\n\nTailored resume overview: ${p.overview}\nTarget role: ${p.target_title}`, 1500);
-        let cp; try { cp = JSON.parse(cRaw); } catch { throw new Error("Cover letter parse failed. Try again."); }
+        let cp; try { cp = JSON.parse(cRaw); } catch(e) { throw new Error("Cover letter parse failed. Try again."); }
         setCov(cp);
       }
 
@@ -543,7 +543,7 @@ export default function App() {
     try {
       const extra = instr.trim() ? `\nADDITIONAL INSTRUCTIONS: ${instr.trim()}` : "";
       const cRaw = await apiCall(COVER_SYS, `Job posting:\n${posting}${extra}\n\nTailored resume overview: ${res.overview}\nTarget role: ${res.target_title}`, 1500);
-      let cp; try { cp = JSON.parse(cRaw); } catch { throw new Error("Cover letter parse failed."); }
+      let cp; try { cp = JSON.parse(cRaw); } catch(e) { throw new Error("Cover letter parse failed."); }
       setCov(cp); setTab("cover");
     } catch (e) { setErr(e.message); }
     setCovLoading(false);
@@ -556,16 +556,16 @@ export default function App() {
     try {
       if (tab === "resume" || !cov) {
         const raw = await apiCall(makeResumeSys(pages), `Job posting:\n${posting}\nADDITIONAL INSTRUCTIONS: ${allInstr}`, pages === 2 ? 2000 : 1500);
-        let p; try { p = JSON.parse(raw); } catch { throw new Error("Resume parse failed. Try again."); }
+        let p; try { p = JSON.parse(raw); } catch(e) { throw new Error("Resume parse failed. Try again."); }
         setRes(p);
         if (cov) {
           const cRaw = await apiCall(COVER_SYS, `Job posting:\n${posting}\nADDITIONAL INSTRUCTIONS: ${allInstr}\n\nTailored resume overview: ${p.overview}\nTarget role: ${p.target_title}`, 1500);
-          let cp; try { cp = JSON.parse(cRaw); } catch { throw new Error("Cover letter parse failed."); }
+          let cp; try { cp = JSON.parse(cRaw); } catch(e) { throw new Error("Cover letter parse failed."); }
           setCov(cp);
         }
       } else {
         const cRaw = await apiCall(COVER_SYS, `Job posting:\n${posting}\nADDITIONAL INSTRUCTIONS: ${allInstr}\n\nTailored resume overview: ${res.overview}\nTarget role: ${res.target_title}`, 1500);
-        let cp; try { cp = JSON.parse(cRaw); } catch { throw new Error("Cover letter parse failed."); }
+        let cp; try { cp = JSON.parse(cRaw); } catch(e) { throw new Error("Cover letter parse failed."); }
         setCov(cp);
       }
       setInstr(allInstr);
@@ -622,7 +622,7 @@ Respond ONLY valid JSON array, no markdown:
       const extra = instr.trim() ? `\nContext: ${instr.trim()}` : "";
       const raw = await apiCall(QA_SYS, `Job posting:\n${posting}\n\nQuestions to answer:\n- ${qList}${extra}\n\nTarget role: ${res?.target_title || ""}`, 2000);
       let parsed;
-      try { parsed = JSON.parse(raw); } catch { throw new Error("Q&A parse failed. Try again."); }
+      try { parsed = JSON.parse(raw); } catch(e) { throw new Error("Q&A parse failed. Try again."); }
 
       const updated = questions.map(q => {
         if (!q.q.trim()) return q;
