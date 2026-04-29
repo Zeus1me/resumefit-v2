@@ -485,24 +485,23 @@ export default function App() {
     const allInstr = (instr.trim() ? instr.trim() + "\n" : "") + refineText.trim();
     try {
       if (tab === "resume" || !cov) {
-        // Regenerate resume
         const raw = await apiCall(makeResumeSys(pages), `Job posting:\n${posting}\nADDITIONAL INSTRUCTIONS: ${allInstr}`, pages === 2 ? 2000 : 1500);
         let p; try { p = JSON.parse(raw); } catch { throw new Error("Resume parse failed. Try again."); }
         setRes(p);
-        // Also regenerate cover letter if it exists
         if (cov) {
           const cRaw = await apiCall(COVER_SYS, `Job posting:\n${posting}\nADDITIONAL INSTRUCTIONS: ${allInstr}\n\nTailored resume overview: ${p.overview}\nTarget role: ${p.target_title}`, 1500);
           let cp; try { cp = JSON.parse(cRaw); } catch { throw new Error("Cover letter parse failed."); }
           setCov(cp);
         }
       } else {
-        // Regenerate cover letter only
         const cRaw = await apiCall(COVER_SYS, `Job posting:\n${posting}\nADDITIONAL INSTRUCTIONS: ${allInstr}\n\nTailored resume overview: ${res.overview}\nTarget role: ${res.target_title}`, 1500);
         let cp; try { cp = JSON.parse(cRaw); } catch { throw new Error("Cover letter parse failed."); }
         setCov(cp);
       }
       setInstr(allInstr);
       setRefineText("");
+      // Clear chat history so advisor reads fresh resume state
+      setChatMsgs(prev => [...prev, { role: "assistant", text: "Resume has been refined with your instructions. Ask me to evaluate the updated version." }]);
     } catch (e) { setErr(e.message); }
     setRefining(false);
   }
@@ -640,15 +639,17 @@ ${fullResumeText}
 ${covText}
 
 YOUR ROLE:
-- You CAN see the full resume above. Reference specific bullets, skills, and projects by name.
+- You CAN see the full resume above. It is the CURRENT version — if the user refined it, this is the UPDATED version.
+- ALWAYS base your evaluation on the resume text shown above, not on your previous messages in this conversation.
+- If the user asks "how about now" or "any improvements" after refining, re-read the resume text above — it IS the latest version.
 - Answer questions about resume-job fit, interview prep, skill gaps, application strategy
 - Give specific, actionable advice — reference exact lines from the resume and exact requirements from the posting
 - Be honest about gaps and misalignments — don't sugarcoat
 - When suggesting improvements, give exact "refine instruction" text the user can paste into the Refine panel
 - Keep responses focused: 3-8 sentences unless asked for detail
 - If asked to evaluate, give a score out of 10 with specific reasons
-- NEVER say "I can't see the resume" or "I can't see the job posting" — you have BOTH above
-- NEVER ask the user to paste the job posting — you already have it
+- NEVER say "I can't see the resume" or "I can't see the job posting" or "no changes detected" — you have the CURRENT version of BOTH above
+- NEVER say "this appears to be the same version" — the resume above IS the latest version after any refinements
 
 THE JOB POSTING (this is the role the candidate is applying for):
 ${posting.slice(0, 5000)}`;
