@@ -500,8 +500,8 @@ export default function App() {
       }
       setInstr(allInstr);
       setRefineText("");
-      // Clear chat history so advisor reads fresh resume state
-      setChatMsgs(prev => [...prev, { role: "assistant", text: "Resume has been refined with your instructions. Ask me to evaluate the updated version." }]);
+      // Clear entire chat history so advisor reads fresh resume state
+      setChatMsgs([{ role: "assistant", text: "Resume updated with your refinements. I can see the new version. Ask me to evaluate it!" }]);
     } catch (e) { setErr(e.message); }
     setRefining(false);
   }
@@ -655,8 +655,8 @@ THE JOB POSTING (this is the role the candidate is applying for):
 ${posting.slice(0, 5000)}`;
 
     try {
-      const history = chatMsgs.slice(-10).map(m => ({ role: m.role === "user" ? "user" : "assistant", content: m.text }));
-      const messages = [...history, { role: "user", content: userMsg }];
+      const history = chatMsgs.slice(-6).map(m => ({ role: m.role === "user" ? "user" : "assistant", content: m.text }));
+      const messages = [...history, { role: "user", content: `[IMPORTANT: The resume and job posting in your system prompt are the CURRENT versions. Base all answers on them, not on previous chat messages.]\n\n${userMsg}` }];
 
       const r = await fetch("/api/tailor", {
         method: "POST", headers: { "Content-Type": "application/json" },
