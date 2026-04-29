@@ -508,8 +508,8 @@ export default function App() {
       }
       setInstr(allInstr);
       setRefineText("");
-      // Clear entire chat history so advisor reads fresh resume state
-      setChatMsgs([{ role: "assistant", text: "Resume updated with your refinements. I can see the new version. Ask me to evaluate it!" }]);
+      // Append notification instead of wiping history
+      setChatMsgs(prev => [...prev, { role: "system", text: "✅ Resume refined. The advisor will read the updated version on your next question." }]);
     } catch (e) { setErr(e.message); }
     setRefining(false);
   }
@@ -639,25 +639,38 @@ MATCHED KEYWORDS: ${(currentRes?.matched_keywords || []).join(", ")}`;
 
     const covText = currentCov ? `\nCOVER LETTER:\n${currentCov.salutation}\n${currentCov.body}\n${currentCov.closing}` : "";
 
-    const chatSys = `You are an expert tech career advisor. You will receive the candidate's resume and job posting in the conversation. Evaluate them honestly. Score out of 10. Quote specific lines. Suggest refine instructions. NEVER say you can't see the resume — it's in the first message.`;
+    const chatSys = `You are an expert tech career advisor. The user's resume and target job posting are included below. Evaluate honestly, score out of 10, quote specific lines from the resume, identify gaps against the posting, and suggest specific refine instructions.`;
 
     try {
-      const contextMsg = `Here is my CURRENT resume and the job posting. Evaluate based on THIS text:
+      // Read resume directly from the DOM - this is EXACTLY what the user sees on screen
+      let resumeText = "Resume not available";
+      if (rRef.current) {
+        resumeText = rRef.current.innerText;
+      }
 
-=== MY RESUME ===
-${fullResumeText}
-${covText}
+      // Read cover letter from DOM if on that tab
+      let coverText = "";
+      if (cRef.current) {
+        coverText = "\n\nCOVER LETTER:\n" + cRef.current.innerText;
+      }
 
-=== JOB POSTING ===
+      // Build the single user message with everything
+      const fullMsg = `RESUME (this is the current version on my screen right now):
+---
+${resumeText}
+---
+${coverText}
+
+JOB POSTING I'm applying to:
+---
 ${currentPosting.slice(0, 4000)}
+---
 
-=== END ===`;
+My question: ${userMsg}
 
-      const messages = [
-        { role: "user", content: contextMsg },
-        { role: "assistant", content: "I can see your full resume and the job posting. What would you like me to evaluate or improve?" },
-        { role: "user", content: userMsg }
-      ];
+IMPORTANT: The resume text above is my CURRENT version. If I ask "how is it now" or "is it better", I have already refined it and the text above IS the updated version. Always evaluate the text above, never claim you can't see it.`;
+
+      const messages = [{ role: "user", content: fullMsg }];
 
       const r = await fetch("/api/tailor", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -1135,14 +1148,15 @@ ${currentPosting.slice(0, 4000)}
                 <div style={{ maxHeight: 320, overflowY: "auto", padding: "0 20px 8px" }}>
                   {chatMsgs.map((m, i) => (
                     <div key={i} style={{
-                      display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start",
+                      display: "flex", justifyContent: m.role === "user" ? "flex-end" : m.role === "system" ? "center" : "flex-start",
                       marginBottom: 8
                     }}>
                       <div style={{
-                        maxWidth: "85%", padding: "8px 14px", borderRadius: 10,
-                        background: m.role === "user" ? "rgba(59,130,246,0.12)" : "rgba(255,255,255,0.04)",
-                        border: `0.5px solid ${m.role === "user" ? "rgba(59,130,246,0.25)" : C.border}`,
-                        fontSize: 12.5, lineHeight: 1.6, color: C.text, whiteSpace: "pre-wrap"
+                        maxWidth: m.role === "system" ? "100%" : "85%", padding: m.role === "system" ? "6px 14px" : "8px 14px", borderRadius: 10,
+                        background: m.role === "user" ? "rgba(59,130,246,0.12)" : m.role === "system" ? "rgba(16,185,129,0.08)" : "rgba(255,255,255,0.04)",
+                        border: `0.5px solid ${m.role === "user" ? "rgba(59,130,246,0.25)" : m.role === "system" ? "rgba(16,185,129,0.2)" : C.border}`,
+                        fontSize: m.role === "system" ? 11.5 : 12.5, lineHeight: 1.6, color: m.role === "system" ? C.success : C.text, whiteSpace: "pre-wrap",
+                        textAlign: m.role === "system" ? "center" : "left"
                       }}>
                         {m.text}
                       </div>
