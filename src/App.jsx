@@ -372,12 +372,15 @@ ONLY valid JSON, no markdown:
 {"company_name":"str","role_title":"str","date":"April 23, 2026","salutation":"Dear [name or Hiring Manager],","body":"str (use \\n\\n between paragraphs)","closing":"Sincerely,"}`;
 
 const C = {
-  bg: "#06080F", surface: "#0F1219", surfaceR: "#151A24",
-  border: "#1C2333", borderH: "#2A3347",
-  accent: "#3B82F6", accentD: "#1D4ED8", accentS: "rgba(59,130,246,0.08)",
-  text: "#E8ECF4", textM: "#8B95A9", textD: "#5A6478",
-  success: "#10B981", error: "#EF4444", errorS: "rgba(239,68,68,0.06)",
-  emerald: "#10B981", emeraldS: "rgba(16,185,129,0.08)"
+  bg: "#08090E", surface: "#10121A", surfaceR: "#161924",
+  border: "#1E2436", borderH: "#2D3650",
+  accent: "#4F8EF7", accentD: "#2B6CE6", accentS: "rgba(79,142,247,0.07)",
+  text: "#E4E8F1", textM: "#8D97AE", textD: "#586278",
+  success: "#2DD4A0", error: "#F06565", errorS: "rgba(240,101,101,0.06)",
+  emerald: "#2DD4A0", emeraldS: "rgba(45,212,160,0.07)",
+  amber: "#F5B731", amberS: "rgba(245,183,49,0.07)",
+  purple: "#A78BFA", purpleS: "rgba(167,139,250,0.07)",
+  glass: "rgba(255,255,255,0.02)"
 };
 
 export default function App() {
@@ -387,6 +390,7 @@ export default function App() {
   const [instr, setInstr] = useState("");
   const [pages, setPages] = useState(1);
   const [genType, setGenType] = useState("resume"); // resume | both
+  const [view, setView] = useState("dashboard"); // dashboard | builder | results
   const [status, setStatus] = useState("idle");
   const [prog, setProg] = useState("");
   const [err, setErr] = useState("");
@@ -395,6 +399,62 @@ export default function App() {
   const resRef = useRef(null);
   const covRef2 = useRef(null);
   const postingRef = useRef("");
+
+  // Dashboard data (persisted in localStorage)
+  const [apps, setApps] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("rf_apps") || "[]"); } catch { return []; }
+  });
+  const [resumeVersions, setResumeVersions] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("rf_versions") || "[]"); } catch { return []; }
+  });
+
+  useEffect(() => { try { localStorage.setItem("rf_apps", JSON.stringify(apps)); } catch {} }, [apps]);
+  useEffect(() => { try { localStorage.setItem("rf_versions", JSON.stringify(resumeVersions)); } catch {} }, [resumeVersions]);
+
+  function saveApplication(resData, covData, postText) {
+    const app = {
+      id: Date.now(),
+      date: new Date().toISOString(),
+      title: resData.target_title || "Untitled",
+      company: covData?.company_name || resData.filename_suffix?.replace(/_/g, " ") || "Unknown",
+      score: resData.match_score || 0,
+      keywords: resData.matched_keywords || [],
+      stage: "applied",
+      notes: "",
+      postingSnippet: postText.slice(0, 200)
+    };
+    setApps(prev => [app, ...prev]);
+  }
+
+  function saveResumeVersion(resData, covData, postText) {
+    const ver = {
+      id: Date.now(),
+      date: new Date().toISOString(),
+      title: resData.target_title || "Untitled",
+      company: covData?.company_name || resData.filename_suffix?.replace(/_/g, " ") || "",
+      score: resData.match_score || 0,
+      overview: resData.overview || "",
+      skills: resData.skills || [],
+      highlights: resData.key_highlights || [],
+      projects: resData.projects || [],
+      freelanceBullets: resData.freelance_bullets || [],
+      jklBullets: resData.jkl_bullets || [],
+      isRefinement: false
+    };
+    setResumeVersions(prev => [ver, ...prev.slice(0, 49)]); // keep last 50
+  }
+
+  function updateAppStage(id, stage) {
+    setApps(prev => prev.map(a => a.id === id ? { ...a, stage } : a));
+  }
+
+  function updateAppNotes(id, notes) {
+    setApps(prev => prev.map(a => a.id === id ? { ...a, notes } : a));
+  }
+
+  function deleteApp(id) {
+    setApps(prev => prev.filter(a => a.id !== id));
+  }
   const [tab, setTab] = useState("resume");
   const [copied, setCopied] = useState(false);
   const [covLoading, setCovLoading] = useState(false);
@@ -472,7 +532,9 @@ export default function App() {
         setCov(cp);
       }
 
-      setStatus("done"); setProg("");
+      setStatus("done"); setProg(""); setView("results");
+      // Auto-save resume version
+      saveResumeVersion(p, cp || null, posting);
     } catch (e) { setErr(e.message); setStatus("error"); setProg(""); }
   }
 
@@ -508,8 +570,14 @@ export default function App() {
       }
       setInstr(allInstr);
       setRefineText("");
-      // Append notification instead of wiping history
       setChatMsgs(prev => [...prev, { role: "system", text: "✅ Resume refined. The advisor will read the updated version on your next question." }]);
+      // Save refined version
+      const latestRes = resRef.current;
+      const latestCov = covRef2.current;
+      if (latestRes) {
+        const ver = { id: Date.now(), date: new Date().toISOString(), title: latestRes.target_title || "Untitled", company: latestCov?.company_name || "", score: latestRes.match_score || 0, overview: latestRes.overview || "", skills: latestRes.skills || [], highlights: latestRes.key_highlights || [], projects: latestRes.projects || [], freelanceBullets: latestRes.freelance_bullets || [], jklBullets: latestRes.jkl_bullets || [], isRefinement: true };
+        setResumeVersions(prev => [ver, ...prev.slice(0, 49)]);
+      }
     } catch (e) { setErr(e.message); }
     setRefining(false);
   }
@@ -578,7 +646,11 @@ Respond ONLY valid JSON array, no markdown:
   const getExp = id => MD.experience.find(e => e.id === id);
   const getBul = (eid, ids) => { const e = getExp(eid); return e ? ids.map(b => e.bullets.find(x => x.id === b)).filter(Boolean) : []; };
   const getProj = pid => MD.projects.find(p => p.id === pid);
-  function reset() { setStatus("idle"); setRes(null); setCov(null); setPosting(""); setUrl(""); setErr(""); setProg(""); setInstr(""); setTab("resume"); setCopied(false); setCovLoading(false); setGenType("resume"); setRefineText(""); setRefining(false); setQuestions([{ q: "", a: "" }]); setQaGenerated(false); setQaLoading(false); setChatMsgs([]); setChatInput(""); }
+  function reset() { setStatus("idle"); setRes(null); setCov(null); setPosting(""); setUrl(""); setErr(""); setProg(""); setInstr(""); setTab("resume"); setCopied(false); setCovLoading(false); setGenType("resume"); setRefineText(""); setRefining(false); setQuestions([{ q: "", a: "" }]); setQaGenerated(false); setQaLoading(false); setChatMsgs([]); setChatInput(""); setView("builder"); }
+
+  function goToDashboard() { setView("dashboard"); }
+
+  function startNewResume() { reset(); setView("builder"); }
 
   async function handleChat() {
     if (!chatInput.trim() || chatLoading) return;
@@ -726,23 +798,196 @@ IMPORTANT: The resume text above is my CURRENT version. If I ask "how is it now"
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
       {/* HEADER */}
-      <div style={{ borderBottom: `1px solid ${C.border}`, padding: "16px 20px", background: C.surface }}>
-        <div style={{ maxWidth: 920, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 9, background: `linear-gradient(135deg,${C.accent},${C.accentD})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 700, color: "#fff" }}>Rf</div>
+      <div style={{ borderBottom: `1px solid ${C.border}`, padding: "14px 20px", background: "rgba(16,18,26,0.85)", backdropFilter: "blur(20px)", position: "sticky", top: 0, zIndex: 50 }}>
+        <div style={{ maxWidth: 960, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }} onClick={goToDashboard}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: `linear-gradient(135deg, ${C.accent}, ${C.purple})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: "#fff", letterSpacing: "-0.02em" }}>Rf</div>
             <div>
-              <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-0.025em" }}>ResumeFit</div>
-              <div style={{ fontSize: 10.5, color: C.textD, letterSpacing: "0.02em" }}>RESUME & COVER LETTER TAILORING</div>
+              <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: "-0.03em", color: C.text }}>ResumeFit</div>
+              <div style={{ fontSize: 10, color: C.textD, letterSpacing: "0.08em", textTransform: "uppercase" }}>AI career platform</div>
             </div>
           </div>
-          {status === "done" && <button onClick={reset} style={{ ...bSm(true), padding: "7px 18px" }}>+ New</button>}
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            {["dashboard", "builder"].map(v => (
+              <button key={v} onClick={v === "dashboard" ? goToDashboard : startNewResume}
+                style={{
+                  padding: "7px 16px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 500,
+                  cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s",
+                  background: view === v ? "rgba(79,142,247,0.12)" : "transparent",
+                  color: view === v ? C.accent : C.textD
+                }}>
+                {v === "dashboard" ? "Dashboard" : "Builder"}
+              </button>
+            ))}
+            <div style={{ width: 1, height: 20, background: C.border, margin: "0 4px" }}/>
+            <button onClick={startNewResume} style={{
+              padding: "7px 18px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 600,
+              cursor: "pointer", fontFamily: "inherit",
+              background: `linear-gradient(135deg, ${C.accent}, ${C.accentD})`, color: "#fff"
+            }}>+ New</button>
+          </div>
         </div>
       </div>
 
-      <div style={{ maxWidth: 920, margin: "0 auto", padding: "24px 20px" }}>
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: "28px 20px" }}>
+
+        {/* DASHBOARD */}
+        {view === "dashboard" && (
+          <div>
+            {/* Hero greeting */}
+            <div style={{ marginBottom: 28, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+              <div>
+                <div style={{ fontSize: 12, color: C.textD, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 6 }}>{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</div>
+                <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.03em", lineHeight: 1.2 }}>{"Welcome back, Zeus"}</div>
+              </div>
+              <div style={{ fontSize: 12, color: C.textD }}>
+                {resumeVersions.length > 0 && `${resumeVersions.length} resume versions saved`}
+              </div>
+            </div>
+
+            {/* Stats row */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 28 }}>
+              {[
+                { label: "Resumes", value: resumeVersions.filter(v => !v.isRefinement).length, sub: "generated", color: C.accent, glow: "rgba(79,142,247,0.08)" },
+                { label: "Applications", value: apps.length, sub: "tracked", color: C.emerald, glow: "rgba(45,212,160,0.08)" },
+                { label: "Interviews", value: apps.filter(a => a.stage === "interview").length, sub: "scheduled", color: C.amber, glow: "rgba(245,183,49,0.08)" },
+                { label: "Avg match", value: resumeVersions.length ? Math.round(resumeVersions.reduce((s, v) => s + (v.score || 0), 0) / resumeVersions.length) + "%" : "—", sub: "score", color: C.purple, glow: "rgba(167,139,250,0.08)" }
+              ].map((s, i) => (
+                <div key={i} style={{ background: s.glow, border: `1px solid ${C.border}`, borderRadius: 14, padding: "18px 20px", position: "relative", overflow: "hidden" }}>
+                  <div style={{ position: "absolute", top: -20, right: -20, width: 80, height: 80, borderRadius: "50%", background: s.glow, filter: "blur(20px)" }}/>
+                  <div style={{ fontSize: 11, color: C.textD, marginBottom: 6, letterSpacing: "0.04em" }}>{s.label}</div>
+                  <div style={{ fontSize: 32, fontWeight: 700, color: s.color, letterSpacing: "-0.02em", lineHeight: 1 }}>{s.value}</div>
+                  <div style={{ fontSize: 10, color: C.textD, marginTop: 4 }}>{s.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Quick actions */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 28 }}>
+              <button onClick={startNewResume} style={{
+                padding: "22px 24px", borderRadius: 14, border: `1px solid rgba(79,142,247,0.2)`,
+                background: "linear-gradient(135deg, rgba(79,142,247,0.06), rgba(167,139,250,0.04))",
+                color: C.text, fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
+                textAlign: "left", transition: "all 0.2s"
+              }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(79,142,247,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, marginBottom: 10, color: C.accent }}>+</div>
+                {"Tailor new resume"}
+                <div style={{ fontSize: 12, fontWeight: 400, marginTop: 6, color: C.textD, lineHeight: 1.5 }}>Paste a job posting and generate an ATS-optimized resume + cover letter</div>
+              </button>
+              <div style={{
+                padding: "22px 24px", borderRadius: 14, border: `1px solid ${C.border}`,
+                background: C.surface, color: C.text, fontSize: 15, fontWeight: 600, textAlign: "left"
+              }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(45,212,160,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, marginBottom: 10, color: C.emerald }}>{">"}</div>
+                {"Application pipeline"}
+                <div style={{ fontSize: 12, fontWeight: 400, marginTop: 6, color: C.textD, lineHeight: 1.5 }}>
+                  {apps.length === 0 ? "Start tracking applications to see your pipeline here" :
+                    `${apps.filter(a => a.stage === "applied").length} applied \u2022 ${apps.filter(a => a.stage === "interview").length} interviews \u2022 ${apps.filter(a => a.stage === "offer").length} offers`}
+                </div>
+              </div>
+            </div>
+
+            {/* Application tracker Kanban */}
+            {apps.length > 0 && (
+              <div style={{ marginBottom: 28 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                  <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.02em" }}>Applications</div>
+                  <div style={{ fontSize: 11, color: C.textD }}>{apps.length} total</div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+                  {[
+                    { key: "applied", label: "Applied", color: C.accent, bg: "rgba(79,142,247,0.05)" },
+                    { key: "interview", label: "Interview", color: C.amber, bg: "rgba(245,183,49,0.05)" },
+                    { key: "offer", label: "Offer", color: C.emerald, bg: "rgba(45,212,160,0.05)" },
+                    { key: "rejected", label: "Rejected", color: C.textD, bg: "rgba(88,98,120,0.05)" }
+                  ].map(col => (
+                    <div key={col.key} style={{ background: col.bg, border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, minHeight: 120 }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: col.color, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span>{col.label}</span>
+                        <span style={{ fontSize: 10, width: 20, height: 20, borderRadius: 6, background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center", color: C.textD }}>{apps.filter(a => a.stage === col.key).length}</span>
+                      </div>
+                      {apps.filter(a => a.stage === col.key).map(app => (
+                        <div key={app.id} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", marginBottom: 8, transition: "border-color 0.15s", cursor: "default" }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 3, color: C.text }}>{app.title}</div>
+                          <div style={{ fontSize: 11, color: C.textD, marginBottom: 8 }}>{app.company}</div>
+                          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                            <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 6, fontWeight: 600, background: app.score >= 80 ? "rgba(45,212,160,0.1)" : app.score >= 60 ? "rgba(245,183,49,0.1)" : "rgba(240,101,101,0.1)", color: app.score >= 80 ? C.emerald : app.score >= 60 ? C.amber : C.error }}>{app.score}%</span>
+                            <select value={app.stage} onChange={e => updateAppStage(app.id, e.target.value)} style={{ fontSize: 10, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 6, color: C.textM, padding: "2px 6px", fontFamily: "inherit", outline: "none" }}>
+                              {["applied", "interview", "offer", "rejected"].map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                            <button onClick={() => deleteApp(app.id)} style={{ fontSize: 10, background: "none", border: "none", color: C.textD, cursor: "pointer", padding: "2px 4px", marginLeft: "auto", opacity: 0.5 }}>{"×"}</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Resume version history */}
+            {resumeVersions.length > 0 && (
+              <div style={{ marginBottom: 28 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                  <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.02em" }}>Resume versions</div>
+                  <button onClick={() => { if (confirm("Clear all resume versions?")) setResumeVersions([]); }} style={{ fontSize: 11, background: "none", border: "none", color: C.textD, cursor: "pointer", fontFamily: "inherit" }}>Clear all</button>
+                </div>
+                <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
+                  {resumeVersions.slice(0, 10).map((ver, i) => (
+                    <div key={ver.id} style={{ padding: "14px 18px", borderBottom: i < Math.min(resumeVersions.length, 10) - 1 ? `1px solid ${C.border}` : "none", display: "flex", alignItems: "center", gap: 14, transition: "background 0.15s" }}>
+                      {/* Score circle */}
+                      <div style={{
+                        width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+                        background: ver.score >= 80 ? "rgba(45,212,160,0.08)" : ver.score >= 60 ? "rgba(245,183,49,0.08)" : "rgba(240,101,101,0.08)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 12, fontWeight: 700, color: ver.score >= 80 ? C.emerald : ver.score >= 60 ? C.amber : C.error
+                      }}>
+                        {ver.score > 0 ? ver.score + "%" : "—"}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 13, fontWeight: 600 }}>{ver.title}</span>
+                          {ver.isRefinement && <span style={{ fontSize: 9, padding: "2px 7px", borderRadius: 5, background: C.purpleS, color: C.purple, fontWeight: 600, letterSpacing: "0.03em" }}>REFINED</span>}
+                        </div>
+                        <div style={{ fontSize: 11, color: C.textD, marginTop: 2, display: "flex", gap: 8 }}>
+                          {ver.company && <span>{ver.company}</span>}
+                          <span>{new Date(ver.date).toLocaleDateString("en-CA", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 11, color: C.textD, maxWidth: 250, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flexShrink: 0 }}>
+                        {ver.overview?.slice(0, 70)}...
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {resumeVersions.length > 10 && (
+                  <div style={{ textAlign: "center", fontSize: 12, color: C.textD, marginTop: 10 }}>
+                    {"Showing 10 of " + resumeVersions.length + " versions"}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Empty state */}
+            {resumeVersions.length === 0 && apps.length === 0 && (
+              <div style={{ textAlign: "center", padding: "60px 20px", color: C.textD }}>
+                <div style={{ width: 64, height: 64, borderRadius: 16, background: "rgba(79,142,247,0.06)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 28, color: C.accent }}>Rf</div>
+                <div style={{ fontSize: 17, fontWeight: 600, color: C.text, marginBottom: 8 }}>Ready to launch your job search?</div>
+                <div style={{ fontSize: 13, maxWidth: 420, margin: "0 auto", lineHeight: 1.7, color: C.textD }}>
+                  {"Click '+ New' to paste a job posting and generate your first tailored resume. Every resume, cover letter, and application will be tracked here."}
+                </div>
+                <button onClick={startNewResume} style={{
+                  marginTop: 20, padding: "10px 28px", borderRadius: 10, border: "none", fontSize: 13, fontWeight: 600,
+                  cursor: "pointer", fontFamily: "inherit",
+                  background: `linear-gradient(135deg, ${C.accent}, ${C.accentD})`, color: "#fff"
+                }}>Get started</button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* INPUT */}
-        {status !== "done" && (
+        {view === "builder" && status !== "done" && (
           <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
             <div style={{ display: "flex", borderBottom: `1px solid ${C.border}` }}>
               {[["text","Paste Text"],["url","From URL"]].map(([m,l]) => (
@@ -865,8 +1110,17 @@ IMPORTANT: The resume text above is my CURRENT version. If I ask "how is it now"
         )}
 
         {/* RESULTS */}
-        {status === "done" && res && (
+        {view === "results" && status === "done" && res && (
           <div>
+            {/* Back to dashboard link */}
+            <div style={{ marginBottom: 12 }}>
+              <button onClick={goToDashboard} style={{ background: "transparent", border: "none", color: C.textD, fontSize: 12, cursor: "pointer", fontFamily: "inherit", padding: 0 }}>
+                {"← Dashboard"}
+              </button>
+              <button onClick={() => { if (res) { saveApplication(res, cov, posting); } }} style={{ marginLeft: 12, background: "transparent", border: `1px solid ${C.emerald}`, borderRadius: 6, color: C.emerald, fontSize: 11, cursor: "pointer", fontFamily: "inherit", padding: "4px 12px" }}>
+                {"Save to applications"}
+              </button>
+            </div>
             {/* Tabs + actions */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
               <div style={{ display: "flex", gap: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 3 }}>
