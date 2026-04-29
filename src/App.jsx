@@ -392,6 +392,9 @@ export default function App() {
   const [err, setErr] = useState("");
   const [res, setRes] = useState(null);
   const [cov, setCov] = useState(null);
+  const resRef = useRef(null);
+  const covRef2 = useRef(null);
+  const postingRef = useRef("");
   const [tab, setTab] = useState("resume");
   const [copied, setCopied] = useState(false);
   const [covLoading, setCovLoading] = useState(false);
@@ -406,6 +409,11 @@ export default function App() {
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef(null);
+
+  // Keep refs in sync with latest state (prevents stale closures in chat handler)
+  useEffect(() => { resRef.current = res; }, [res]);
+  useEffect(() => { covRef2.current = cov; }, [cov]);
+  useEffect(() => { postingRef.current = posting; }, [posting]);
   const rRef = useRef(null);
   const cRef = useRef(null);
   const taRef = useRef(null);
@@ -579,23 +587,28 @@ Respond ONLY valid JSON array, no markdown:
     setChatMsgs(prev => [...prev, { role: "user", text: userMsg }]);
     setChatLoading(true);
 
-    // Build full resume text for context
-    const freeBuls = getBul("freelance", res?.freelance_bullets || []).map(b => "• " + b.text).join("\n");
-    const jklBuls = getBul("jkl", res?.jkl_bullets || []).map(b => "• " + b.text).join("\n");
-    const huaweiBuls = getBul("huawei", res?.huawei_bullets || []).map(b => "• " + b.text).join("\n");
-    const airtelBuls = res?.include_airtel ? getBul("airtel", res?.airtel_bullets || []).map(b => "• " + b.text).join("\n") : "";
-    const writerBuls = res?.include_writer ? getBul("writer", res?.writer_bullets || []).map(b => "• " + b.text).join("\n") : "";
-    const projTexts = (res?.projects || []).map(pid => { const p = getProj(pid); return p ? `${p.title} (${p.dates}): ${p.text}` : ""; }).filter(Boolean).join("\n");
-    const certTexts = (res?.certifications || []).map(cid => { const c = MD.certifications.find(x => x.id === cid); return c ? `${c.name} — ${c.issuer} (${c.date})` : ""; }).filter(Boolean).join(", ");
-    const skillTexts = (res?.skills || []).map(s => `${s.label}: ${s.items}`).join("\n");
-    const courseworkText = (res?.coursework || []).join(", ");
+    // Use refs to get the LATEST state values (not stale closure)
+    const currentRes = resRef.current;
+    const currentCov = covRef2.current;
+    const currentPosting = postingRef.current;
+
+    // Build full resume text from LATEST state
+    const freeBuls = getBul("freelance", currentRes?.freelance_bullets || []).map(b => "• " + b.text).join("\n");
+    const jklBuls = getBul("jkl", currentRes?.jkl_bullets || []).map(b => "• " + b.text).join("\n");
+    const huaweiBuls = getBul("huawei", currentRes?.huawei_bullets || []).map(b => "• " + b.text).join("\n");
+    const airtelBuls = currentRes?.include_airtel ? getBul("airtel", currentRes?.airtel_bullets || []).map(b => "• " + b.text).join("\n") : "";
+    const writerBuls = currentRes?.include_writer ? getBul("writer", currentRes?.writer_bullets || []).map(b => "• " + b.text).join("\n") : "";
+    const projTexts = (currentRes?.projects || []).map(pid => { const p = getProj(pid); return p ? `${p.title} (${p.dates}): ${p.text}` : ""; }).filter(Boolean).join("\n");
+    const certTexts = (currentRes?.certifications || []).map(cid => { const c = MD.certifications.find(x => x.id === cid); return c ? `${c.name} — ${c.issuer} (${c.date})` : ""; }).filter(Boolean).join(", ");
+    const skillTexts = (currentRes?.skills || []).map(s => `${s.label}: ${s.items}`).join("\n");
+    const courseworkText = (currentRes?.coursework || []).join(", ");
 
     const fullResumeText = `
 PROFESSIONAL SUMMARY:
-${res?.overview || "not yet generated"}
+${currentRes?.overview || "not yet generated"}
 
 KEY HIGHLIGHTS:
-${(res?.key_highlights || []).map(h => "• " + h).join("\n")}
+${(currentRes?.key_highlights || []).map(h => "• " + h).join("\n")}
 
 TECHNICAL SKILLS:
 ${skillTexts}
@@ -621,10 +634,10 @@ ${airtelBuls ? `Telecom Engineering Intern | Airtel Nigeria | Jul – Dec 2019\n
 PROJECTS:
 ${projTexts}
 
-MATCH SCORE: ${res?.match_score || "N/A"}%
-MATCHED KEYWORDS: ${(res?.matched_keywords || []).join(", ")}`;
+MATCH SCORE: ${currentRes?.match_score || "N/A"}%
+MATCHED KEYWORDS: ${(currentRes?.matched_keywords || []).join(", ")}`;
 
-    const covText = cov ? `\nCOVER LETTER:\n${cov.salutation}\n${cov.body}\n${cov.closing}` : "";
+    const covText = currentCov ? `\nCOVER LETTER:\n${currentCov.salutation}\n${currentCov.body}\n${currentCov.closing}` : "";
 
     const chatSys = `You are an expert tech career advisor embedded in ResumeFit.
 
@@ -635,7 +648,7 @@ ${fullResumeText}
 ${covText}
 
 HERE IS THE JOB POSTING:
-${posting.slice(0, 5000)}
+${currentPosting.slice(0, 5000)}
 
 RULES:
 - The resume and posting above are CURRENT. You CAN see them.
