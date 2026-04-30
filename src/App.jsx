@@ -773,7 +773,6 @@ IMPORTANT: The resume text above is my CURRENT version. If I ask "how is it now"
     if (!ref.current) return;
     const w = window.open("", "_blank");
     w.document.write(`<!DOCTYPE html><html><head><title>${filename}</title>
-      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
       <style>
         *{box-sizing:border-box;margin:0;padding:0}
         html,body{background:#ffffff;background-color:#ffffff}
@@ -802,10 +801,9 @@ IMPORTANT: The resume text above is my CURRENT version. If I ask "how is it now"
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: "'DM Sans','Segoe UI',system-ui,sans-serif" }}>
-      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
       {/* HEADER */}
-      <div style={{ borderBottom: `1px solid ${C.border}`, padding: "14px 20px", background: "rgba(16,18,26,0.85)", backdropFilter: "blur(20px)", position: "sticky", top: 0, zIndex: 50 }}>
+      <div style={{ borderBottom: "1px solid " + C.border, padding: "14px 20px", background: C.surface, position: "sticky", top: 0, zIndex: 50 }}>
         <div style={{ maxWidth: 960, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }} onClick={goToDashboard}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: `linear-gradient(135deg, ${C.accent}, ${C.purple})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: "#fff", letterSpacing: "-0.02em" }}>Rf</div>
