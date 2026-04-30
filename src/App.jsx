@@ -109,7 +109,6 @@ const MD = {
     reporting: "APA 7 formatting, Technical Reports, Business Proposals, Stakeholder Presentations, Dashboard Documentation, Academic Papers"
   }
 };
-
 const TIPS = [
   { cat: "ATS", tip: "Most Canadian employers use ATS. Keep formatting simple \u2014 no tables, columns, or graphics in your resume file." },
   { cat: "Keywords", tip: "Mirror exact phrases from the job posting. If they say 'data visualization,' don't write 'data viz' \u2014 ATS matches literal strings." },
@@ -383,12 +382,29 @@ const C = {
   glass: "rgba(255,255,255,0.02)"
 };
 
+// Helper components and constants - MUST be before the App component
+const paper = { background: "#ffffff", backgroundColor: "#ffffff", borderRadius: 12, padding: "28px 36px", color: "#1a1a1a", fontFamily: "'DM Sans','Segoe UI',sans-serif", lineHeight: 1.4, boxShadow: "0 2px 20px rgba(0,0,0,0.3)" };
+const taS = { width: "100%", minHeight: 150, maxHeight: 400, background: "#08090E", border: "1px solid #1E2436", borderRadius: 10, padding: "12px 14px", fontSize: 13, fontFamily: "'JetBrains Mono',monospace", color: "#E4E8F1", resize: "none", outline: "none", lineHeight: 1.6, boxSizing: "border-box" };
+function fB(e) { e.target.style.borderColor = "#4F8EF7"; }
+function bB(e) { e.target.style.borderColor = "#1E2436"; }
+function bSm(p) { return { padding: "7px 14px", borderRadius: 7, fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", border: p ? "none" : "1px solid #1E2436", background: p ? "linear-gradient(135deg,#4F8EF7,#2B6CE6)" : "#10121A", color: "#E4E8F1" }; }
 
-const paper = { background: "#ffffff", backgroundColor: "#ffffff", borderRadius: 12, padding: "28px 36px", color: "#1a1a1a", fontFamily: "'DM Sans','Segoe UI',sans-serif", lineHeight: 1.4, boxShadow: "0 2px 20px rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.1)" };
-const taS = { width: "100%", minHeight: 150, maxHeight: 400, background: "#06080F", border: "1px solid #1C2333", borderRadius: 10, padding: "12px 14px", fontSize: 13, fontFamily: "'JetBrains Mono',monospace", color: "#E8ECF4", resize: "none", outline: "none", lineHeight: 1.6, boxSizing: "border-box" };
-const fB = e => { e.target.style.borderColor = "#3B82F6"; };
-const bB = e => { e.target.style.borderColor = "#1C2333"; };
-function bSm(p) { return { padding: "7px 14px", borderRadius: 7, fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", border: p ? "none" : "1px solid #1C2333", background: p ? "linear-gradient(135deg,#3B82F6,#1D4ED8)" : "#0F1219", color: "#E8ECF4" }; }
+function SH(props) {
+  return <div style={{ fontSize: 11, fontWeight: 700, color: "#1E3A5F", letterSpacing: "0.06em", borderBottom: "1.5px solid #1E3A5F", paddingBottom: 1, marginTop: 7, marginBottom: 3 }}>{props.t}</div>;
+}
+
+function EB(props) {
+  if (!props.exp) return null;
+  return (
+    <div style={{ marginBottom: 5 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5 }}>
+        <span><span style={{ fontWeight: 600 }}>{props.exp.title}</span><span style={{ color: "#777" }}>{" | " + props.exp.company}</span></span>
+        <span style={{ color: "#777", flexShrink: 0, marginLeft: 10 }}>{props.exp.dates}</span>
+      </div>
+      {props.bul.map(function(b, i) { return <div key={i} style={{ fontSize: 10, color: "#333", marginTop: 1, paddingLeft: 10, lineHeight: 1.45 }}>{"• " + b.text}</div>; })}
+    </div>
+  );
+}
 
 export default function App() {
   const [mode, setMode] = useState("text");
@@ -1453,17 +1469,3 @@ IMPORTANT: The resume text above is my CURRENT version. If I ask "how is it now"
     </div>
   );
 }
-
-function SH({ t }) { return <div style={{ fontSize: 11, fontWeight: 700, color: "#1E3A5F", letterSpacing: "0.06em", borderBottom: "1.5px solid #1E3A5F", paddingBottom: 1, marginTop: 7, marginBottom: 3 }}>{t}</div>; }
-
-function EB({ exp, bul }) {
-  if (!exp) return null;
-  return (<div style={{ marginBottom: 5 }}>
-    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5 }}>
-      <span><span style={{ fontWeight: 600 }}>{exp.title}</span><span style={{ color: "#777" }}>{" | " + exp.company}</span></span>
-      <span style={{ color: "#777", flexShrink: 0, marginLeft: 10 }}>{exp.dates}</span>
-    </div>
-    {bul.map((b,i) => <div key={i} style={{ fontSize: 10, color: "#333", marginTop: 1, paddingLeft: 10, lineHeight: 1.45 }}>{"• " + b.text}</div>)}
-  </div>);
-}
-
